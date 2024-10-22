@@ -117,7 +117,7 @@ func main() {
 		activity := gologs.ActivityLog{
 			UserID:     "uuid-1234-5678-90ab-cdef",
 			Username:   "user@example.com",
-			Action:     "LOGIN",
+			Activity:   "LOGIN",
 			Module:     "AuthModule",
 			IPAddress:  "192.168.1.1",
 			DeviceInfo: "Chrome on Windows",
@@ -253,9 +253,9 @@ type ActivityLogModel struct {
 	gorm.Model
 	UserID      string `json:"user_id"`
 	Username    string `json:"username"`
-	Action      string `json:"action"`
+	Activity    string `json:"activity"`
 	Module      string `json:"module"`
-	Timestamp   string `json:"timestamp"`
+	ActivityTime   string `json:"activity_time"`
 	IPAddress   string `json:"ip_address,omitempty"`
 	DeviceInfo  string `json:"device_info,omitempty"`
 	Location    string `json:"location,omitempty"`
@@ -286,15 +286,15 @@ func main() {
 	prefetchCount := 50
 
 	err = gologs.ConsumeActivityLogs(&consumerName, func(log gologs.ActivityLog, ack func(bool)) {
-		timestamp := log.ActionTime.Format("2006-01-02 15:04:05")
+		activityTime := log.ActivityTime.Format("2006-01-02 15:04:05")
 		createdTime := time.Now().Format("2006-01-02 15:04:05")
 
 		activityLogModel := ActivityLogModel{
 			UserID:      log.UserID,
 			Username:    log.Username,
-			Action:      log.Action,
+			Activity:    log.Activity,
 			Module:      log.Module,
-			Timestamp:   timestamp,
+			ActivityTime: activityTime,
 			IPAddress:   log.IPAddress,
 			DeviceInfo:  log.DeviceInfo,
 			Location:    log.Location,

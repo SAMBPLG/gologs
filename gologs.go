@@ -30,15 +30,15 @@ type AuditLog struct {
 
 // ActivityLog represents a single activity log entry.
 type ActivityLog struct {
-	UserID     string    `json:"user_id"`
-	Username   string    `json:"username"`
-	Action     string    `json:"action"`
-	Module     string    `json:"module"`
-	ActionTime time.Time `json:"timestamp"`
-	IPAddress  string    `json:"ip_address,omitempty"`
-	DeviceInfo string    `json:"device_info,omitempty"`
-	Location   string    `json:"location,omitempty"`
-	Remarks    string    `json:"remarks,omitempty"`
+	UserID       string    `json:"user_id"`
+	Username     string    `json:"username"`
+	Activity     string    `json:"activity"`
+	Module       string    `json:"module"`
+	ActivityTime time.Time `json:"activity_time"`
+	IPAddress    string    `json:"ip_address,omitempty"`
+	DeviceInfo   string    `json:"device_info,omitempty"`
+	Location     string    `json:"location,omitempty"`
+	Remarks      string    `json:"remarks,omitempty"`
 }
 
 // LogClient manages the connection and channel for RabbitMQ.
@@ -129,7 +129,7 @@ func PublishAuditLog(log AuditLog) error {
 
 // PublishActivityLog sends an activity log to the RabbitMQ queue.
 func PublishActivityLog(log ActivityLog) error {
-	log.ActionTime = time.Now()
+	log.ActivityTime = time.Now()
 	payload, err := json.Marshal(log)
 	if err != nil {
 		return fmt.Errorf("failed to marshal activity log: %w", err)
