@@ -47,21 +47,22 @@ type LogClient struct {
 	channel    *amqp.Channel
 }
 
-// Global instance of LogClient
-var logClient *LogClient
+// Global instances of LogClient
+var auditLogClient *LogClient
+var activityLogClient *LogClient
 
 // InitAuditLogClient initializes the global AuditLogClient.
 func InitAuditLogClient() error {
-	return initLogClient(AuditTopicName)
+	return initLogClient(AuditTopicName, &auditLogClient)
 }
 
 // InitActivityLogClient initializes the global ActivityLogClient.
 func InitActivityLogClient() error {
-	return initLogClient(ActivityTopicName)
+	return initLogClient(ActivityTopicName, &activityLogClient)
 }
 
 // initLogClient initializes the log client and declares the queue.
-func initLogClient(topicName string) error {
+func initLogClient(topicName string, client **LogClient) error {
 	if err := godotenv.Load(); err != nil {
 		log.Println("Warning: Could not load .env file, using environment variables from the host")
 	}
@@ -95,7 +96,7 @@ func initLogClient(topicName string) error {
 		return fmt.Errorf("failed to declare a queue: %w", err)
 	}
 
-	logClient = &LogClient{
+	*client = &LogClient{
 		connection: conn,
 		channel:    ch,
 	}
@@ -111,8 +112,8 @@ func PublishAuditLog(log AuditLog) error {
 		return fmt.Errorf("failed to marshal audit log: %w", err)
 	}
 
-	if err := logClient.channel.Publish(
-		"",             // exchange
+	if err := auditLogClient.channel.Publish(
+		"",              // exchange
 		AuditTopicName, // routing key
 		false,          // mandatory
 		false,          // immediate
@@ -135,7 +136,7 @@ func PublishActivityLog(log ActivityLog) error {
 		return fmt.Errorf("failed to marshal activity log: %w", err)
 	}
 
-	if err := logClient.channel.Publish(
+	if err := activityLogClient.channel.Publish(
 		"",                // exchange
 		ActivityTopicName, // routing key
 		false,             // mandatory
@@ -165,11 +166,11 @@ func ConsumeAuditLogs(consumerName *string, handler func(AuditLog, func(bool)), 
 		effectivePrefetchCount = 50 // Default value
 	}
 
-	if err := logClient.channel.Qos(effectivePrefetchCount, 0, false); err != nil {
+	if err := auditLogClient.channel.Qos(effectivePrefetchCount, 0, false); err != nil {
 		return fmt.Errorf("failed to set QoS: %w", err)
 	}
 
-	msgs, err := logClient.channel.Consume(
+	msgs, err := auditLogClient.channel.Consume(
 		AuditTopicName, // queue
 		*consumerName,  // consumer name
 		false,          // auto-ack
@@ -222,11 +223,11 @@ func ConsumeActivityLogs(consumerName *string, handler func(ActivityLog, func(bo
 		effectivePrefetchCount = 50 // Default value
 	}
 
-	if err := logClient.channel.Qos(effectivePrefetchCount, 0, false); err != nil {
+	if err := activityLogClient.channel.Qos(effectivePrefetchCount, 0, false); err != nil {
 		return fmt.Errorf("failed to set QoS: %w", err)
 	}
 
-	msgs, err := logClient.channel.Consume(
+	msgs, err := activityLogClient.channel.Consume(
 		ActivityTopicName, // queue
 		*consumerName,     // consumer name
 		false,             // auto-ack
@@ -265,17 +266,20 @@ func ConsumeActivityLogs(consumerName *string, handler func(ActivityLog, func(bo
 	return nil
 }
 
-// Close closes the channel and connection of the LogClient.
-func Close() {
-	if logClient.channel != nil {
-		_ = logClient.channel.Close()
-	}
-	if logClient.connection != nil {
-		_ = logClient.connection.Close()
+// Close closes the channel and connection of the specified LogClient.
+func Close(client **LogClient) {
+	if *client != nil {
+		if (*client).channel != nil {
+			_ = (*client).channel.Close()
+		}
+		if (*client).connection != nil {
+			_ = (*client).connection.Close()
+		}
 	}
 }
 
-// CloseGlobalClient closes the global log client.
-func CloseGlobalClient() {
-	Close()
+// CloseGlobalClients closes both global log clients.
+func CloseGlobalClients() {
+	Close(&auditLogClient)
+	Close(&activityLogClient)
 }
